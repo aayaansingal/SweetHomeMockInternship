@@ -193,9 +193,11 @@ public class HomeFurniturePanel extends JPanel implements DialogView {
       this.descriptionTextField.getDocument().addDocumentListener(new DocumentListener() {
           public void changedUpdate(DocumentEvent ev) {
             controller.removePropertyChangeListener(HomeFurnitureController.Property.DESCRIPTION, descriptionChangeListener);
-            String description = descriptionTextField.getText(); 
+            String description = descriptionTextField.getText();
             if (description == null || description.trim().length() == 0) {
-              controller.setDescription(null);
+              // Use an empty string rather than null, because null means "leave unchanged"
+              // to the controller, whereas the user explicitly cleared the description here
+              controller.setDescription("");
             } else {
               controller.setDescription(description);
             }

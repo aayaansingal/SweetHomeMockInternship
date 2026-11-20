@@ -1217,7 +1217,7 @@ public class HomeFurnitureController implements Controller {
       if (name != null) {
         this.preferences.addAutoCompletionString("HomePieceOfFurnitureName", name);
       }
-      if (description != null) {
+      if (description != null && description.length() > 0) {
         this.preferences.addAutoCompletionString("HomePieceOfFurnitureDescription", description);
       }
     }
@@ -1344,7 +1344,12 @@ public class HomeFurnitureController implements Controller {
         piece.setNameVisible(nameVisible);
       }
       if (description != null) {
-        piece.setDescription(description);
+        // An empty description means the user cleared it, so remove the piece's description
+        if (description.length() == 0) {
+          piece.setDescription(null);
+        } else {
+          piece.setDescription(description);
+        }
       }
       if (price != null
           &&!(piece instanceof HomeFurnitureGroup)) {
