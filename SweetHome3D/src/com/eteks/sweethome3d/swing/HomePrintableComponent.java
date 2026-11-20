@@ -347,21 +347,23 @@ public class HomePrintableComponent extends JComponent implements Printable {
       FurnitureTable furnitureTable = null;
       final FurnitureTable.FurnitureFilter furnitureFilter;
       boolean levelColumnPrinted = false;
-      if (furnitureView instanceof FurnitureTable
-          && (homePrint == null
-              || homePrint.isPlanPrinted()
-              || homePrint.isView3DPrinted())) {
+      if (furnitureView instanceof FurnitureTable) {
         furnitureTable = (FurnitureTable)furnitureView;
         furnitureFilter = furnitureTable.getFurnitureFilter();
         levelColumnPrinted = furnitureTable.isLevelColumnPrinted();
-        furnitureTable.setFurnitureFilter(new FurnitureTable.FurnitureFilter() {
-            public boolean include(Home home, HomePieceOfFurniture piece) {
-              // Print furniture of every viewable level, as the plan of each viewable level is printed
-              return (furnitureFilter == null || furnitureFilter.include(home, piece))
-                  && (piece.getLevel() == null || piece.getLevel().isViewable());
-            }
-          });
-        // Print the Level column when home has levels so that rows of different levels are distinguishable
+        if (homePrint == null
+            || homePrint.isPlanPrinted()
+            || homePrint.isView3DPrinted()) {
+          furnitureTable.setFurnitureFilter(new FurnitureTable.FurnitureFilter() {
+              public boolean include(Home home, HomePieceOfFurniture piece) {
+                // Print furniture of every viewable level, as the plan of each viewable level is printed
+                return (furnitureFilter == null || furnitureFilter.include(home, piece))
+                    && (piece.getLevel() == null || piece.getLevel().isViewable());
+              }
+            });
+        }
+        // Whatever other sections are printed, print the Level column when home has levels
+        // so that rows of different levels are distinguishable
         furnitureTable.setLevelColumnPrinted(!this.home.getLevels().isEmpty());
       } else {
         furnitureFilter = null;

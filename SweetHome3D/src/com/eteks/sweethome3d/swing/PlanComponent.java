@@ -82,6 +82,7 @@ import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.security.AccessControlException;
 import java.text.Format;
@@ -2008,16 +2009,53 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
    * that makes it fill <code>pageFormat</code> imageable size if this attribute is <code>null</code>.
    * If the home has viewable levels, the plan of each viewable level is printed in the home's
    * level order, with <code>pageIndex</code> counting pages across all these levels.
-   * The selected level is changed temporarily while printing and always restored afterwards.
+   * The selected level and selected items are changed temporarily while printing
+   * and always restored afterwards.
    */
-  public int print(Graphics g, PageFormat pageFormat, int pageIndex) {
-    List<Level> printedLevels = getPrintedLevels();
+  public int print(final Graphics g, final PageFormat pageFormat, final int pageIndex) {
+    final List<Level> printedLevels = getPrintedLevels();
     if (printedLevels.isEmpty()) {
       // Home without viewable levels: print the plan as it's displayed
       return printSelectedLevel(g, pageFormat, pageIndex);
+    } else if (EventQueue.isDispatchThread()) {
+      return printLevelsPage(g, pageFormat, pageIndex, printedLevels);
+    } else {
+      // Changing the selected level notifies listeners that update Swing components
+      // (level tabs, menu actions), so switch levels and print synchronously in Event Dispatch Thread
+      class RunnableContext {
+        int pageExists;
+      }
+      final RunnableContext context = new RunnableContext();
+      try {
+        EventQueue.invokeAndWait(new Runnable() {
+            public void run() {
+              context.pageExists = printLevelsPage(g, pageFormat, pageIndex, printedLevels);
+            }
+          });
+        return context.pageExists;
+      } catch (InterruptedException ex) {
+        // Keep interrupted status so that the print task can stop at next page
+        Thread.currentThread().interrupt();
+        return NO_SUCH_PAGE;
+      } catch (InvocationTargetException ex) {
+        if (ex.getCause() instanceof RuntimeException) {
+          throw (RuntimeException)ex.getCause();
+        } else {
+          throw (Error)ex.getCause();
+        }
+      }
     }
+  }
 
+  /**
+   * Prints the given page among the plan pages of <code>printedLevels</code>.
+   * Must be called in Event Dispatch Thread when this component is displayed.
+   */
+  private int printLevelsPage(Graphics g, PageFormat pageFormat, int pageIndex, List<Level> printedLevels) {
+    // Selecting another level removes the selected items of other levels, so save them too
     Level previouslySelectedLevel = this.home.getSelectedLevel();
+    List<Selectable> previouslySelectedItems = new ArrayList<Selectable>(this.home.getSelectedItems());
+    boolean previousAllLevelsSelection = this.home.isAllLevelsSelection();
     try {
       // Find the level that contains the requested page, then print that page of its plan
       int levelFirstPageIndex = 0;
@@ -2031,8 +2069,12 @@ public class PlanComponent extends JComponent implements PlanView, Scrollable, P
       }
       return NO_SUCH_PAGE;
     } finally {
-      // Selecting a level is only temporary state for printing
+      // Selecting a level is only temporary state for printing: restore level first, then selection
       this.home.setSelectedLevel(previouslySelectedLevel);
+      this.home.setAllLevelsSelection(previousAllLevelsSelection);
+      if (!previouslySelectedItems.equals(this.home.getSelectedItems())) {
+        this.home.setSelectedItems(previouslySelectedItems);
+      }
     }
   }
 
