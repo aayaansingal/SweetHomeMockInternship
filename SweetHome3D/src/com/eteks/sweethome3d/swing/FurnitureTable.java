@@ -1184,8 +1184,8 @@ public class FurnitureTable extends JTable implements View, Printable {
         case ELEVATION :
           return 50;
         case VOLUME :
-          // Volumes have more digits than single dimensions
-          return 70;
+          // Volumes have many more digits than single dimensions (often millions of cubic cm)
+          return 100;
         case ANGLE :
           return 35;        
         case LEVEL :
